@@ -5,9 +5,13 @@ import uuid
 from typing import Optional
 
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+
+# from .database import get_async_db
+from src.schemas.transcription import TranscriptionRequest
+from src.utils.auth import get_client_ip
+from src.utils.rate_limit import rate_limited
 
 app = FastAPI()
 
@@ -25,6 +29,7 @@ os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # Kafka Producer Initialization
 async def get_kafka_producer():
+
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
     try:
@@ -33,24 +38,17 @@ async def get_kafka_producer():
         await producer.stop()
 
 
-# Utility function to get client IP
-def get_client_ip(request):
-    client_host = request.client.host
-    return client_host
-
-
-# Endpoint Models
-class TranscriptionRequest(BaseModel):
-    videoUrl: Optional[str] = None
-    language: str
-    translate_language: str
-
-
+ 
 # Async function to simulate transcription
 async def simulate_transcription_task(task_id: str):
     await asyncio.sleep(10)  # Simulate processing delay
     task_db[task_id] = "completed"
 
+@app.get("/")
+@rate_limited(max_calls=1, time_frame=900)
+async def read_root(request: Request):
+    # logger.info("This is an root log message")
+    return {"message": "Welcome to the Transcription & Translation "}
 
 # Endpoint to transcribe video URL
 @app.post("/api/transcribe/")
@@ -64,7 +62,7 @@ async def transcribe_video(
 
     # Generate a unique task ID
     task_id = str(uuid.uuid4())
-    user_ip = "0.0.0.0"  # In actual use, extract from the request
+    user_ip = get_client_ip
 
     # Create the message payload
     message = {
@@ -74,17 +72,18 @@ async def transcribe_video(
         "from_language": from_language,
         "user_ip": user_ip,
     }
+    try:
+        # Produce the message to Kafka
+        await kafka_producer.send_and_wait(KAFKA_TOPIC, json.dumps(message).encode("utf-8"))
 
-    # Produce the message to Kafka
-    await kafka_producer.send_and_wait(KAFKA_TOPIC, json.dumps(message).encode("utf-8"))
+        # Initialize task status
+        task_db[task_id] = "pending"
 
-    # Initialize task status
-    task_db[task_id] = "pending"
-
-    # Simulate the task processing
-    asyncio.create_task(simulate_transcription_task(task_id))
-
-    return JSONResponse(content={"task_id": task_id}, status_code=202)
+        # Simulate the task processing
+        # asyncio.create_task(simulate_transcription_task(task_id))
+    finally:
+        # await kafka_producer.stop()
+        return JSONResponse(content={"task_id": task_id}, status_code=202)
 
 
 # Endpoint to upload video file
@@ -106,7 +105,7 @@ async def upload_video_file(
     with open(file_path, "wb") as destination:
         destination.write(await file.read())
 
-    user_ip = "0.0.0.0"  # In actual use, extract from the request
+    user_ip = get_client_ip
 
     # Create the message payload
     message = {
@@ -116,19 +115,19 @@ async def upload_video_file(
         "from_language": language,
         "user_ip": user_ip,
     }
-
+    try:
     # Produce the message to Kafka
-    await kafka_producer.send_and_wait(
-        UPLOAD_FILE_TOPIC, json.dumps(message).encode("utf-8")
-    )
+        await kafka_producer.send_and_wait(
+            UPLOAD_FILE_TOPIC, json.dumps(message).encode("utf-8")
+        )
 
-    # Initialize task status
-    task_db[task_id] = "pending"
+        # Initialize task status
+        task_db[task_id] = "pending"
 
-    # Simulate the task processing
-    asyncio.create_task(simulate_transcription_task(task_id))
-
-    return JSONResponse(content={"task_id": task_id}, status_code=202)
+        # Simulate the task processing
+        # asyncio.create_task(simulate_transcription_task(task_id))
+    finally:
+        return JSONResponse(content={"task_id": task_id}, status_code=202)
 
 
 # Endpoint to check task status
