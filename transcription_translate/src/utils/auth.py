@@ -55,10 +55,6 @@ async def get_current_user(
     return user
 
 
-
-
-
-
 def generate_verification_token():
     # Generate a random string as the token
     token = secrets.token_urlsafe(32)  # Generate a 256-bit random token
@@ -68,6 +64,7 @@ def generate_verification_token():
 
     return token_hash
 
+
 def get_client_ip(request: Request) -> str:
     """Utility function to get the client IP address from the request in FastAPI."""
     x_forwarded_for = request.headers.get("x-forwarded-for")
@@ -76,6 +73,7 @@ def get_client_ip(request: Request) -> str:
     else:
         ip = request.client.host
     return ip
+
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()

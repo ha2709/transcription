@@ -7,28 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
-
-from .models.user import User
+from src.models.task import Task
+from src.models.user import User
 
 load_dotenv()
 # DATABASE_URL = "postgresql://admin:1234@localhost/pinchi"
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL"
-    )
+DATABASE_URL = os.environ.get("DATABASE_URL")
 print(12, DATABASE_URL)
 # engine = create_engine(DATABASE_URL)
-engine = create_async_engine(DATABASE_URL, echo=True,   poolclass=NullPool)
+engine = create_async_engine(DATABASE_URL, echo=True, poolclass=NullPool)
 AsyncSessionFactory = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
- 
 
 
 # Dependency to get the database session
 async def get_async_db():
     async with AsyncSessionFactory() as session:
         yield session
-
-
- 
 
 
 # Import all modules here that might define models so that

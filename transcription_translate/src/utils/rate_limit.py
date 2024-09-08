@@ -1,14 +1,10 @@
 import time
 from functools import wraps
+
 from fastapi import HTTPException, Request, status
 
 
 def rate_limited(max_calls: int, time_frame: int):
-    """
-    :param max_calls: Maximum number of calls allowed in the specified time frame.
-    :param time_frame: The time frame (in seconds) for which the limit applies.
-    :return: Decorator function.
-    """
 
     def decorator(func):
         calls = []

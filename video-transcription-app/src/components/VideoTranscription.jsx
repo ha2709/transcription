@@ -24,7 +24,8 @@ const VideoTranscription = () => {
         try {
             // Call different submission logic depending on whether a file is uploaded
             if (file) {
-                await handleSubmitFile(event);
+                await handleSubmitVideoFile(event);
+                
             } else {
                 // Assuming you want to handle URL submission separately
                 const response = await axiosInstance.post('/transcribe', { videoUrl, language, translateLanguage });
@@ -43,8 +44,8 @@ const VideoTranscription = () => {
         setFile(selectedFile);
     };
 
-    // Function to handle file upload submission
-    const handleSubmitFile = async (e) => {
+    // Function to handle video file upload submission
+    const handleSubmitVideoFile = async (e) => {
         e.preventDefault(); // Prevent the default form submission
         if (file) {
             const formData = new FormData();
@@ -53,26 +54,24 @@ const VideoTranscription = () => {
             formData.append('translate_language', translateLanguage);
 
             try {
-                const response = await fetch('http://localhost:8000/api/upload-video-file/', {  // Corrected the endpoint URL
-                    method: 'POST',
-                    body: formData,
+                const response = await axiosInstance.post('/upload-video-file', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to upload file');
+                if (response.status !== 202) {
+                    throw new Error('Failed to upload video file');
                 }
 
-                const data = await response.json();
-                setTaskId(data.task_id);
-                // setTaskId("4f00b060-e2b9-4045-b65f-778a3fe7e96f")
+                setTaskId(response.data.task_id);
                 setTranscriptionStatus('File uploaded successfully. Transcription in progress...');
             } catch (error) {
-                console.error('Error uploading file:', error);
-                setTranscriptionStatus('Failed to upload file. Please try again.');
+                console.error('Error uploading video file:', error);
+                setTranscriptionStatus('Failed to upload video file. Please try again.');
             }
         }
     };
-
+    
+    
     // Poll the backend for task status
     useEffect(() => {
         if (taskId) {
