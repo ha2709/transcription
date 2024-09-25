@@ -24,9 +24,9 @@ async def consume_messages():
 
             # Call the appropriate function based on the topic
             if topic == "video-transcription":
-                await process_video_message(task_data)
+                process_video_message(task_data)
             elif topic == "file-upload":
-                await process_file_upload(task_data)
+                process_file_upload(task_data)
     finally:
         await consumer.stop()
 

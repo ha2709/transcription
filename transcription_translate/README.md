@@ -4,6 +4,8 @@ source env/bin/activate
 pip3 freeze > requirements.txt
 uvicorn src.main:app --reload
 https://www.youtube.com/watch?v=YpvcqxYiyNE&t=504s
+cd consumer/
+python3 consumer.py
 
 alembic revision --autogenerate -m "create_relationship"
 alembic upgrade head

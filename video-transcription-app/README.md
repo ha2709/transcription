@@ -10,8 +10,7 @@ source env/bin/activate
  
  
 pip freeze > requirements.txt
-
-python manage.py runserver
+ 
 
 sudo docker-compose up -d
 python manage.py run_kafka_consumer
