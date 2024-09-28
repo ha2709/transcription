@@ -18,7 +18,7 @@ def add_subtitle_to_video(
         output_video = os.path.join("media/out", f"output-{input_video_name}.mp4")
     else:
         output_video = output_file
-
+    print(21, output_video)
     # Command configuration
     common_options = {
         "c:v": "libx264",

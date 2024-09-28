@@ -1,8 +1,7 @@
 import os
 
 import yt_dlp
-
-from ..utils.decorators import cache, log
+from utils.decorators import cache, log
 
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "download")
 

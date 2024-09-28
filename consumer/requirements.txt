@@ -45,3 +45,8 @@ transformers==4.44.2
 triton==2.3.1
 typing_extensions==4.12.2
 urllib3==2.2.2
+websocket-client==1.8.0
+websockets 
+wsproto 
+youtube-dl 
+yt-dlp 

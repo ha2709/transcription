@@ -1,12 +1,13 @@
 from urllib.parse import urlparse
 
+from services.download_facebook_video import download_facebook_video
+from services.download_instagram_video import download_instagram_video
+from services.download_tiktok_video import download_tiktok_video
+from services.download_twitter_video import download_twitter_video
+from services.download_youtube_video import download_youtube_video
+
 # Applying decorators to methods
-from ..utils.decorators import log
-from .download_facebook_video import download_facebook_video
-from .download_instagram_video import download_instagram_video
-from .download_tiktok_video import download_tiktok_video
-from .download_twitter_video import download_twitter_video
-from .download_youtube_video import download_youtube_video
+from utils.decorators import log
 
 
 @log

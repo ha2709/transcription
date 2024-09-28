@@ -13,6 +13,9 @@ async def consume_messages():
         *KAFKA_TOPICS,
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
         group_id="multi_topic_group",
+        # session_timeout_ms=60000,  # Increase the session timeout
+        # heartbeat_interval_ms=10000,  # Increase the heartbeat interval
+        # auto_commit_interval_ms=5000,  # Adjust commit interval
     )
     await consumer.start()
     print("Start consumer ")

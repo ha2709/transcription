@@ -12,7 +12,7 @@ router = APIRouter()
 @router.post("/transcribe/")
 async def transcribe_video(transcription_request: TranscriptionRequest):
     video_url = transcription_request.videoUrl
-    to_language = transcription_request.translate_language
+    to_language = transcription_request.translateLanguage
     from_language = transcription_request.language
 
     task_id = str(uuid.uuid4())

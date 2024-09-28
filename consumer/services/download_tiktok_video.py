@@ -4,8 +4,7 @@ DOWNLOAD_DIR = os.path.join(os.getcwd(), "download")
 import shutil
 
 import pyktok as pyk
-
-from ..utils.decorators import cache, log
+from utils.decorators import cache, log
 
 pyk.specify_browser("chrome")
 

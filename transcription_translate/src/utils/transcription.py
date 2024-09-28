@@ -13,43 +13,6 @@ from transformers import MarianMTModel, MarianTokenizer
 
 
 @log
-def transcribe_and_translate_srt(input_file, language):
-    if input_file.endswith((".mp4", ".avi", ".mov", ".mkv")):
-        audio_file = video_to_audio(input_file)
-    else:
-        audio_file = input_file
-
-    options = dict(beam_size=5, best_of=5)
-    translate_options = dict(task="transcribe", **options)
-    result = model.transcribe(audio_file, **translate_options)
-
-    audio_path = os.path.splitext(os.path.basename(audio_file))[0]
-    detect_lanaguage = result["language"]
-    print(24, detect_lanaguage)
-    original_srt_path = os.path.join(
-        "srt", audio_path + "_" + detect_lanaguage + ".srt"
-    )
-    with open(original_srt_path, "w", encoding="utf-8") as srt_file:
-        write_srt(result["segments"], srt_file)
-
-    translator = Translator(from_lang=detect_lanaguage, to_lang=language)
-    translated_segments = [
-        {
-            "start": seg["start"],
-            "end": seg["end"],
-            "text": translator.translate(seg["text"]),
-        }
-        for seg in result["segments"]
-    ]
-
-    translated_srt_path = os.path.join("srt", audio_path + f"_{language}.srt")
-    with open(translated_srt_path, "w", encoding="utf-8") as srt_file:
-        write_srt(translated_segments, srt_file)
-
-    return translated_srt_path, original_srt_path
-
-
-@log
 def translate_srt_file(srt_file_path, source_language, target_language):
     """
     Reads an SRT file, translates the subtitle text to the target language using Hugging Face MarianMT,
