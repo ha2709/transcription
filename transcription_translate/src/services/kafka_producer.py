@@ -17,19 +17,3 @@ async def get_kafka_producer():
         yield producer
     finally:
         await producer.stop()
-
-
-async def consume_messages():
-    consumer = AIOKafkaConsumer(
-        KAFKA_TOPIC,
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        group_id="video_processing_group",
-    )
-    await consumer.start()
-    try:
-        async for message in consumer:
-            print(f"Received message: {message.value.decode('utf-8')}")
-            task_id = json.loads(message.value.decode("utf-8"))["task_id"]
-            await simulate_transcription_task(task_id)
-    finally:
-        await consumer.stop()

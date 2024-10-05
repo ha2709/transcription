@@ -1,6 +1,8 @@
 import logging
 import os
 
+import httpx
+
 # from .models import VideoProcess  # Import the VideoProcess model
 from services.process_video import process_video_url
 from utils.srt_validation import validate_srt_file
@@ -26,7 +28,20 @@ from whisper import load_model
 model = load_model("small", device="cpu")
 
 
-def process_file_upload(message):
+async def update_task_status(task_id: str, new_status: str):
+    """
+    Update the task status by calling the API.
+    """
+    api_url = f"http://localhost:8000/api/tasks/{task_id}/status"
+    async with httpx.AsyncClient() as client:
+        response = await client.put(api_url, json={"new_status": new_status})
+        if response.status_code != 200:
+            logging.error(f"Failed to update task status for task ID: {task_id}")
+        else:
+            logging.warning(f"Task ID: {task_id} updated to status: {new_status}")
+
+
+async def process_file_upload(message):
     """Process the uploaded file."""
     print(33, message)
     task_id = message["task_id"]
@@ -36,6 +51,8 @@ def process_file_upload(message):
 
         input_file = message.get("file_path")
         output_file = os.path.join("media/out", f"output-{task_id}.mp4")
+        # Update task status to 'processing'
+        await update_task_status(task_id, "processing")
 
         # Check if the uploaded file is an SRT file
         if input_file.lower().endswith(".srt"):
@@ -50,10 +67,7 @@ def process_file_upload(message):
 
         else:
             # Process the uploaded video file
-            logging.warning(f"Processing video file upload task ID: {task_id}")
-
-            # Convert the video file to audio if needed
-            # audio_file = video_to_audio(input_file)
+            logging.warning(f"Processing up file upload task ID: {task_id}")
 
             # Transcribe and translate SRT
             translated_srt_path, original_srt_path = transcribe_and_translate_srt(
@@ -61,22 +75,24 @@ def process_file_upload(message):
             )
 
             logging.warning(f"SRT file saved to: {translated_srt_path}")
+            # check input file is sound or video file. if video continue
+            if input_file.endswith((".mp4", ".avi", ".mov", ".mkv")):
+                print("process video file ")
+                # Validate and add subtitles to the video
+                if validate_srt_file(translated_srt_path):
+                    add_subtitle_to_video(
+                        input_file,
+                        soft_subtitle=True,
+                        subtitle_file=translated_srt_path,
+                        subtitle_language=message["to_language"],
+                    )
+                    logging.warning("Video with subtitles saved.")
 
-            # Validate and add subtitles to the video
-            if validate_srt_file(translated_srt_path):
-                add_subtitle_to_video(
-                    input_file,
-                    soft_subtitle=True,
-                    subtitle_file=translated_srt_path,
-                    subtitle_language=message["to_language"],
-                )
-                logging.warning("Video with subtitles saved.")
-
-            else:
-                logging.error("Failed to validate the SRT file.")
-
+                else:
+                    logging.error("Failed to validate the SRT file.")
+                    await update_task_status(task_id, "failed")
             # Save the updated status to the database
-
+            await update_task_status(task_id, "completed")
             return output_file
 
     except Exception as e:
@@ -85,7 +101,7 @@ def process_file_upload(message):
         )
 
         # Update the status to "failed" in case of an error
-
+        await update_task_status(task_id, "failed")
         return None
 
 

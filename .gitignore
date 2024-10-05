@@ -16,8 +16,7 @@ dist/
 downloads/
 **/download/
 **/media/
-**/out/
- 
+**/out/ 
 fastapi-kafka/
 bitnami/
 eggs/

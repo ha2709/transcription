@@ -1,13 +1,13 @@
 cd video-transcription-app/
 npm start
 
-cd video_transcription_project/
+cd transcription_translate/
 source env/bin/activate
 
 pip freeze > requirements.txt
 
 sudo docker-compose up -d
-python manage.py run_kafka_consumer
+ 
 docker-compose up --build -d
 docker exec -it video_transcription_project-kafka-1 /bin/bash
 kafka-topics.sh --create --topic file-upload --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1

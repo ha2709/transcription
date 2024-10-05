@@ -1,8 +1,9 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 
-import GoogleTranslateLanguageSelector from './GoogleTranslateLanguageSelector'; // Adjust the path if necessary
-import LanguageSelector from './LanguageSelector'; // Adjust the import path as needed
+import GoogleLogin from './GoogleLogin';
+import GoogleTranslateLanguageSelector from './GoogleTranslateLanguageSelector';
+import LanguageSelector from './LanguageSelector';
 
 const VideoTranscription = () => {
     const [videoUrl, setVideoUrl] = useState('');
@@ -12,25 +13,32 @@ const VideoTranscription = () => {
     const [videoFileUrl, setVideoFileUrl] = useState('');
     const [file, setFile] = useState(null); // State for file input
     const [translateLanguage, setTranslateLanguage] = useState('en');
+    const [userToken, setUserToken] = useState(null); // Store user token after Google Login
 
     // Set the base URL for axios requests
     const axiosInstance = axios.create({
         baseURL: 'http://localhost:8000/api', // Replace with your Django server's base URL
     });
 
+    // Handle Google Login success
+    const handleGoogleLoginSuccess = (token) => {
+        setUserToken(token); // Save the token after successful login
+        console.log("Google token saved: ", token);
+    };
+
     // Handle form submission
     const handleSubmit = async (event) => {
         event.preventDefault();
+        // if (!userToken) {
+        //     alert("Please sign in with Google before submitting the form.");
+        //     return;
+        // }
         try {
-            // Call different submission logic depending on whether a file is uploaded
             if (file) {
                 await handleSubmitVideoFile(event);
-                
             } else {
-                // Assuming you want to handle URL submission separately
                 const response = await axiosInstance.post('/transcribe', { videoUrl, language, translateLanguage });
                 setTaskId(response.data.task_id);
-                // setTaskId("4f00b060-e2b9-4045-b65f-778a3fe7e96f")
                 setTranscriptionStatus('Processing...');
             }
         } catch (error) {
@@ -55,7 +63,7 @@ const VideoTranscription = () => {
 
             try {
                 const response = await axiosInstance.post('/upload-video-file', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
+                    headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${userToken}` }, // Send token in header
                 });
 
                 if (response.status !== 202) {
@@ -70,8 +78,7 @@ const VideoTranscription = () => {
             }
         }
     };
-    
-    
+
     // Poll the backend for task status
     useEffect(() => {
         if (taskId) {
@@ -99,6 +106,12 @@ const VideoTranscription = () => {
     return (
         <div className="container mt-5">
             <h1 className="text-center">Video Transcription</h1>
+
+            {/* Add Google Login Component */}
+            <div className="mb-3">
+                <GoogleLogin onLoginSuccess={handleGoogleLoginSuccess} />
+            </div>
+
             <form onSubmit={handleSubmit} className="mt-4">
                 <div className="form-group">
                     <label htmlFor="videoUrl">Video URL:</label>

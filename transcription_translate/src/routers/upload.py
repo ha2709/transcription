@@ -6,11 +6,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_db
 from src.models.task import Task
-from src.services.kafka_producer import get_kafka_producer
 from src.services.task import handle_task_creation
-from src.services.upload_service import save_file_to_disk
 from src.utils.auth import get_client_ip
-from src.utils.producer import init_kafka_producer
 
 router = APIRouter()
 

@@ -1,15 +1,83 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_db
 from src.schemas.transcription import TranscriptionRequest
-from src.services.task import get_task
+from src.services.task import (
+    create_task,
+    delete_task,
+    get_task,
+    handle_task_creation,
+    update_task_status,
+)
 from src.utils.producer import init_kafka_producer
 
 router = APIRouter()
+
+
+# Create a new task (C - Create)
+@router.post("/tasks/")
+async def create_task_endpoint(
+    file: UploadFile,
+    language: str,
+    translate_language: str,
+    user_ip: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Creates a new task by uploading a file and sending it to Kafka for processing.
+    """
+    task_id = await handle_task_creation(
+        file, language, translate_language, user_ip, db
+    )
+    return JSONResponse(content={"task_id": task_id}, status_code=201)
+
+
+# Retrieve the status of a specific task (R - Read)
+@router.get("/tasks/{task_id}")
+async def get_task_status_endpoint(
+    task_id: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Retrieves the current status of the task based on its task ID.
+    """
+    status = await get_task_status(task_id, db)
+    return JSONResponse(content={"status": status}, status_code=200)
+
+
+# Update the status of a specific task (U - Update)
+@router.put("/tasks/{task_id}/status")
+async def update_task_status_endpoint(
+    task_id: str,
+    new_status: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Updates the status of a task by providing a new status.
+    """
+    task = await update_task_status(task_id, new_status, db)
+    return JSONResponse(
+        content={"task_id": task_id, "status": task.status}, status_code=200
+    )
+
+
+# Delete a specific task (D - Delete)
+@router.delete("/tasks/{task_id}")
+async def delete_task_endpoint(
+    task_id: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Deletes a task from the database based on its task ID.
+    """
+    await delete_task(task_id, db)
+    return JSONResponse(
+        content={"message": "Task deleted successfully"}, status_code=200
+    )
 
 
 @router.get("/task-status/{task_id}")
