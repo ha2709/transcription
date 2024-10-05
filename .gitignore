@@ -22,6 +22,8 @@ bitnami/
 eggs/
 .eggs/
 lib/
+/alembic/versions/*
+
 lib64/
 parts/
 sdist/

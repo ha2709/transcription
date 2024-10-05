@@ -3,8 +3,7 @@ import uuid
 from sqlalchemy import Column, DateTime, Integer, Sequence, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-
-Base = declarative_base()
+from src.models.base import Base
 
 
 class Task(Base):
@@ -20,9 +19,9 @@ class Task(Base):
     status = Column(
         String, default="pending"
     )  # Task status (e.g., pending, processing, completed)
-    # created_at = Column(DateTime(timezone=True), server_default=func.now())
-    # updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    output_file_url = Column(
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    translated_text = Column(
         String, nullable=True
     )  # URL for output file (if applicable)
     user_ip = Column(

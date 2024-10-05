@@ -5,13 +5,13 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from src.models.base import Base
-from src.models.task import Task
-from src.models.user import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-load_dotenv()
+from src.models.task import Task
+from src.models.user import User
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -43,7 +43,13 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+
+    if url == "placeholder":
+        # Replace with your logic for setting the SQLAlchemy URL from an environment variable
+        url = os.getenv("DATABASE_URL")
+
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
 
     context.configure(
         url=url,

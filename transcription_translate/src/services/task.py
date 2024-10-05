@@ -84,26 +84,6 @@ async def delete_task(task_id: str, db: AsyncSession) -> None:
     await db.commit()
 
 
-async def update_task_output_url(
-    task_id: str, new_status: str, output_file_url: str, db: AsyncSession
-) -> Task:
-    """
-    Updates the task status and output_file_url in the database.
-    """
-    # Fetch the task from the database
-    task = await get_task(task_id, db)
-
-    # Update the task status and output_file_url
-    task.status = new_status
-    task.output_file_url = output_file_url
-
-    # Commit the changes to the database
-    await db.commit()
-    await db.refresh(task)
-
-    return task
-
-
 async def update_task_status(task_id: str, new_status: str, db: AsyncSession) -> Task:
 
     task = await get_task(task_id, db)
@@ -128,30 +108,8 @@ async def get_task_status_service(task_id: str, db: AsyncSession):
     print(101, task.status == TaskStatus.COMPLETED.value, task.status)
     # Check if the task is completed
     if task.status == TaskStatus.COMPLETED.value:
-        # Define the file path based on the task_id
-        file_path = task.output_file_url
-        print(113, file_path)
-        # Check if the file exists
-        if os.path.exists(file_path):
-            try:
-                # Open and read the file content
-                with open(file_path, "r", encoding="utf-8") as file:
-                    content = file.read()
-                print(140, content)
-                # Return the file content in JSON format
-                return {"status": task.status, "file_content": content}
 
-            except Exception as e:
-                # logging.error(
-                #     f"Failed to read file for task ID: {task_id}, Error: {str(e)}"
-                # )
-                raise HTTPException(
-                    status_code=500, detail="Error reading file content"
-                )
-
-        else:
-            # If the file does not exist, raise a 404 error
-            raise HTTPException(status_code=404, detail="File not found")
+        return {"status": task.status, "file_content": task.translated_text}
 
     # If the task is not completed, return the current status
     return JSONResponse(content={"status": task.status}, status_code=200)

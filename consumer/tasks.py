@@ -21,10 +21,20 @@ model = load_model("small", device="cpu")
 
 
 async def update_task_url(task_id: str, new_status: str, output_file_url: str):
-
+    # First, read the file content from the output_file_url
+    try:
+        with open(output_file_url, "r", encoding="utf-8") as file:
+            file_content = file.read()
+    except FileNotFoundError:
+        logging.error(f"File not found at path: {output_file_url}")
+        return
+    except Exception as e:
+        logging.error(f"Error reading file {output_file_url}: {str(e)}")
+        return
+    print(34, file_content)
     # Construct the full API URL by appending the task_id and 'output-url' endpoint
     api_url = f"http://localhost:8000/api/tasks/{task_id}/output-url"
-    params = {"output_file_url": output_file_url, "new_status": new_status}
+    params = {"translated_text": file_content, "new_status": new_status}
 
     # Make the HTTP request to update the task's output file URL
     async with httpx.AsyncClient() as client:
