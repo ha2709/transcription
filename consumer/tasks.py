@@ -5,6 +5,7 @@ import httpx
 
 # from .models import VideoProcess  # Import the VideoProcess model
 from services.process_video import process_video_url
+from utils.enum_utils import TaskStatus
 from utils.srt_validation import validate_srt_file
 from utils.subtitle import add_subtitle_to_video
 from utils.transcription import (
@@ -15,17 +16,34 @@ from utils.transcription import (
 )
 from whisper import load_model
 
-# DOWNLOAD_DIR = os.path.join(settings.MEDIA_ROOT, "media/download")
-# SRT_DIR = os.path.join(settings.MEDIA_ROOT, "media/srt")
-
-
-# Ensure directories exist
-# os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-# os.makedirs(SRT_DIR, exist_ok=True)
-# os.makedirs(OUT_DIR, exist_ok=True)
-
 # Load the Whisper model
 model = load_model("small", device="cpu")
+
+
+async def update_task_url(task_id: str, new_status: str, output_file_url: str):
+
+    # Construct the full API URL by appending the task_id and 'output-url' endpoint
+    api_url = f"http://localhost:8000/api/tasks/{task_id}/output-url"
+    params = {"output_file_url": output_file_url, "new_status": new_status}
+
+    # Make the HTTP request to update the task's output file URL
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.put(api_url, params=params)
+            if response.status_code == 200:
+                logging.info(
+                    f"Task ID: {task_id} updated with output_file_url: {output_file_url}"
+                )
+            else:
+                logging.error(
+                    f"Failed to update output_file_url for task ID: {task_id}. Status Code: {response.status_code}"
+                )
+        except httpx.RequestError as exc:
+            logging.error(
+                f"An error occurred while requesting {exc.request.url!r}. Error: {exc}"
+            )
+        except Exception as e:
+            logging.error(f"Unexpected error occurred: {str(e)}")
 
 
 async def update_task_status(task_id: str, new_status: str):
@@ -33,8 +51,9 @@ async def update_task_status(task_id: str, new_status: str):
     Update the task status by calling the API.
     """
     api_url = f"http://localhost:8000/api/tasks/{task_id}/status"
+    params = {"new_status": new_status}
     async with httpx.AsyncClient() as client:
-        response = await client.put(api_url, json={"new_status": new_status})
+        response = await client.put(api_url, params=params)
         if response.status_code != 200:
             logging.error(f"Failed to update task status for task ID: {task_id}")
         else:
@@ -52,7 +71,7 @@ async def process_file_upload(message):
         input_file = message.get("file_path")
         output_file = os.path.join("media/out", f"output-{task_id}.mp4")
         # Update task status to 'processing'
-        await update_task_status(task_id, "processing")
+        await update_task_status(task_id, TaskStatus.PROCESSING.value)
 
         # Check if the uploaded file is an SRT file
         if input_file.lower().endswith(".srt"):
@@ -62,6 +81,10 @@ async def process_file_upload(message):
             )
             clean_srt_file(translated_srt_path)
             logging.warning(f"Translated SRT file saved to: {translated_srt_path}")
+            # Update task status to 'completed' and set output_file_url
+            await update_task_url(
+                task_id, TaskStatus.COMPLETED.value, translated_srt_path
+            )
 
             return translated_srt_path
 
@@ -90,9 +113,12 @@ async def process_file_upload(message):
 
                 else:
                     logging.error("Failed to validate the SRT file.")
-                    await update_task_status(task_id, "failed")
+                    await update_task_status(task_id, TaskStatus.FAILED.value)
             # Save the updated status to the database
-            await update_task_status(task_id, "completed")
+            await update_task_url(
+                task_id, TaskStatus.COMPLETED.value, translated_srt_path
+            )
+            # await update_task_status(task_id, TaskStatus.COMPLETED.value)
             return output_file
 
     except Exception as e:
@@ -101,15 +127,16 @@ async def process_file_upload(message):
         )
 
         # Update the status to "failed" in case of an error
-        await update_task_status(task_id, "failed")
+        await update_task_status(task_id, TaskStatus.FAILED.value)
         return None
 
 
-def process_video_message(message):
+async def process_video_message(message):
     task_id = message["task_id"]
 
     try:
-
+        # Update task status to 'processing'
+        await update_task_status(task_id, TaskStatus.PROCESSING.value)
         # Process video and generate paths
         input_file = process_video_url(message["video_url"], task_id)
         translated_srt_path, original_srt_path = transcribe_and_translate_srt(
@@ -130,22 +157,9 @@ def process_video_message(message):
             # video_process.status = "completed"
         else:
             logging.error("Failed to validate the SRT file.")
+            await update_task_status(task_id, TaskStatus.FAILED.value)
             # video_process.status = "failed"
-
-        # Save the final status to the database
-
-        # Generate URL for downloading the video using task_id
-        # video_filename = f"{task_id}.mp4"
-        # download_url = os.path.join(settings.MEDIA_URL, "out", video_filename)
-        # # video_process.output_file_url = download_url
-        # # video_process.save()
-        # return download_url
-
+        await update_task_status(task_id, TaskStatus.COMPLETED.value)
     except Exception as e:
         logging.error(f"Failed to process task ID: {task_id}, Error: {str(e)}")
-
-        # Update the status to "failed" in case of an error
-        # video_process.status = "failed"
-        # video_process.save()
-
-        # return None
+        await update_task_status(task_id, TaskStatus.FAILED.value)

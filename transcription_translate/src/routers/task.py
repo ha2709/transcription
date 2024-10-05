@@ -7,13 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_db
 from src.schemas.transcription import TranscriptionRequest
 from src.services.task import (
-    create_task,
     delete_task,
     get_task,
+    get_task_status_service,
     handle_task_creation,
+    update_task_output_url,
     update_task_status,
 )
-from src.utils.producer import init_kafka_producer
 
 router = APIRouter()
 
@@ -65,6 +65,37 @@ async def update_task_status_endpoint(
     )
 
 
+# Update the output file URL of a specific task
+@router.put("/tasks/{task_id}/output-url")
+async def update_task_output_url_endpoint(
+    task_id: str,
+    output_file_url: str,
+    new_status: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Updates the output_file_url of a task by providing a new URL.
+    """
+    # Fetch the task and ensure it exists
+    task = await get_task(task_id, db)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Update the task's output_file_url and commit changes to the database
+    updated_task = await update_task_output_url(
+        task_id, new_status, output_file_url, db
+    )
+
+    return JSONResponse(
+        content={
+            "task_id": updated_task.task_id,
+            "output_file_url": updated_task.output_file_url,
+            "status": updated_task.status,
+        },
+        status_code=200,
+    )
+
+
 # Delete a specific task (D - Delete)
 @router.delete("/tasks/{task_id}")
 async def delete_task_endpoint(
@@ -85,8 +116,5 @@ async def get_task_status(
     task_id: str,
     db: AsyncSession = Depends(get_async_db),
 ):
-    task = await get_task(task_id, db)
-    status = task.status
-    if not status:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return JSONResponse(content={"status": status}, status_code=200)
+    print(89, task_id)
+    return await get_task_status_service(task_id, db)

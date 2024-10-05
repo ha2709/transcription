@@ -1,17 +1,18 @@
 pip install fastapi uvicorn aiokafka python-multipart
 
- cd video-transcription-app/
+cd video-transcription-app/
 npm start 
 
+cd transcription_translate
+sudo su
+docker compose up 
 
 cd transcription_translate
 source env/bin/activate
 
 uvicorn src.main:app --reload
 
-cd transcription_translate
-sudo su
-docker compose up 
+
 
 https://www.youtube.com/watch?v=YpvcqxYiyNE&t=504s
 cd consumer/
