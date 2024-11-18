@@ -84,6 +84,24 @@ async def delete_task(task_id: str, db: AsyncSession) -> None:
     await db.commit()
 
 
+async def update_task_output_url(
+    task_id: str, new_status: str, translated_text: str, db: AsyncSession
+) -> Task:
+
+    # Fetch the task from the database
+    task = await get_task(task_id, db)
+
+    # Update the task status and output_file_url
+    task.status = new_status
+    task.translated_text = translated_text
+
+    # Commit the changes to the database
+    await db.commit()
+    await db.refresh(task)
+
+    return task
+
+
 async def update_task_status(task_id: str, new_status: str, db: AsyncSession) -> Task:
 
     task = await get_task(task_id, db)

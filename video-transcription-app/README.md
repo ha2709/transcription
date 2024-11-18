@@ -6,7 +6,7 @@ source env/bin/activate
 
 pip freeze > requirements.txt
 
-sudo docker-compose up -d
+sudo docker compose up -d
  
 docker-compose up --build -d
 docker exec -it video_transcription_project-kafka-1 /bin/bash

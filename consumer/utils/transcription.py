@@ -28,7 +28,7 @@ def transcribe_and_translate_srt(input_file, language):
         audio_file = input_file
 
     options = dict(beam_size=5, best_of=5)
-    translate_options = dict(task="transcribe", **options)
+    translate_options = dict(task="translate", **options)
     try:
         result = model.transcribe(audio_file, **translate_options)
     except Exception as e:
@@ -37,8 +37,8 @@ def transcribe_and_translate_srt(input_file, language):
     print(25, language, result)
 
     audio_path = os.path.splitext(os.path.basename(audio_file))[0]
-    detect_lanaguage = result["language"]
-
+    # detect_lanaguage = result["language"]
+    detect_lanaguage = "en"
     print(24, detect_lanaguage)
     # Save original transcription SRT in 'output' folder
     original_srt_path = os.path.join(output_dir, f"{audio_path}_{detect_lanaguage}.srt")
@@ -49,6 +49,14 @@ def transcribe_and_translate_srt(input_file, language):
     except Exception as e:
         logger.error(f"Failed to save original SRT file {original_srt_path}: {e}")
         return None, None
+
+    # Skip translation if the detected language matches the target language
+    if detect_lanaguage == language:
+        logger.info(
+            f"Detected language matches the target language ({language}). Skipping translation."
+        )
+        return original_srt_path, original_srt_path
+
     # Define the translation model name based on detected and target languages
     model_name = f"Helsinki-NLP/opus-mt-{detect_lanaguage}-{language}"
 

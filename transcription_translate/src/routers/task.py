@@ -8,8 +8,10 @@ from src.database import get_async_db
 from src.schemas.transcription import TranscriptionRequest
 from src.services.task import (
     delete_task,
+    get_task,
     get_task_status_service,
     handle_task_creation,
+    update_task_output_url,
     update_task_status,
 )
 
@@ -64,6 +66,37 @@ async def update_task_status_endpoint(
     task = await update_task_status(task_id, new_status, db)
     return JSONResponse(
         content={"task_id": task_id, "status": task.status}, status_code=200
+    )
+
+
+# Update the output file URL of a specific task
+@router.put("/tasks/{task_id}/output-url")
+async def update_task_output_url_endpoint(
+    task_id: str,
+    translated_text: str,
+    new_status: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Updates the output_file_url of a task by providing a new URL.
+    """
+    # Fetch the task and ensure it exists
+    task = await get_task(task_id, db)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Update the task's output_file_url and commit changes to the database
+    updated_task = await update_task_output_url(
+        task_id, new_status, translated_text, db
+    )
+
+    return JSONResponse(
+        content={
+            "task_id": updated_task.task_id,
+            "output_file_url": updated_task.output_file_url,
+            "status": updated_task.status,
+        },
+        status_code=200,
     )
 
 

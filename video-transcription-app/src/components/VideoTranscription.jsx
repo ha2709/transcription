@@ -11,6 +11,7 @@ const VideoTranscription = () => {
     const [taskId, setTaskId] = useState(null);
     const [transcriptionStatus, setTranscriptionStatus] = useState('');
     const [videoFileUrl, setVideoFileUrl] = useState('');
+    const [transcriptionContent, setTranscriptionContent] = useState('');
     const [file, setFile] = useState(null); // State for file input
     const [translateLanguage, setTranslateLanguage] = useState('en');
     const [userToken, setUserToken] = useState(null); // Store user token after Google Login
@@ -38,8 +39,9 @@ const VideoTranscription = () => {
                 await handleSubmitVideoFile(event);
             } else {
                 const response = await axiosInstance.post('/transcribe', { videoUrl, language, translateLanguage });
+                // setTaskId("4f90a040-e121-47fc-a32c-b0ba271fd726")
                 setTaskId(response.data.task_id);
-                setTranscriptionStatus('Processing...');
+                // setTranscsriptionStatus('Processing...');
             }
         } catch (error) {
             console.error('Error starting transcription:', error);
@@ -87,7 +89,7 @@ const VideoTranscription = () => {
                     const statusResponse = await axiosInstance.get(`/task-status/${taskId}`);
                     if (statusResponse.data.status === 'completed') {
                         setTranscriptionStatus('Completed');
-                        setVideoFileUrl(`http://localhost:8000/media/out/output-${taskId}.mp4`);
+                        setTranscriptionContent(statusResponse.data.file_content); // Set the transcribed content
                         clearInterval(interval);
                     } else if (statusResponse.data.status === 'failed') {
                         setTranscriptionStatus('Failed');
@@ -149,6 +151,14 @@ const VideoTranscription = () => {
             </form>
 
             {taskId && <p className="mt-3">Task ID: {taskId}</p>}
+
+            {/* Display the transcription content if the status is 'completed' */}
+            {transcriptionStatus === 'Completed' && transcriptionContent && (
+                <div className="mt-4">
+                    <h2>Transcription Content</h2>
+                    <pre>{transcriptionContent}</pre> {/* Preformatted text to display the transcription */}
+                </div>
+            )}
             {transcriptionStatus && <p className="mt-3">Status: {transcriptionStatus}</p>}
 
             {videoFileUrl && (
