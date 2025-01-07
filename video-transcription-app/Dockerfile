@@ -1,20 +1,12 @@
-# video-transcription-app/Dockerfile
-# Use the official Node.js image.
-FROM node:16
+# Frontend Dockerfile
+FROM node:18-alpine
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install app dependencies
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 RUN npm install
 
-# Bundle app source
 COPY . .
-
-# Expose the port on which the app will run
 EXPOSE 3000
-
-# Start the React app
 CMD ["npm", "start"]

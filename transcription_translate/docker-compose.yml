@@ -1,21 +1,23 @@
-version: '3.8'  # Updated to the latest version for compatibility
+version: '3.8'
 
 services:
   zookeeper:
-    image: bitnami/zookeeper:latest  # Updated image to use a newer version in the OCI format
+    image: bitnami/zookeeper:latest
     ports:
       - "2181:2181"
     environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes  # Required environment variable for bitnami image
+      - ALLOW_ANONYMOUS_LOGIN=yes
 
   kafka:
-    image: bitnami/kafka:latest  # Updated image to use a newer version in the OCI format
+    image: bitnami/kafka:latest
     ports:
       - "9092:9092"
     environment:
+      - KAFKA_BROKER_ID=1
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - ALLOW_PLAINTEXT_LISTENER=yes  # Required environment variable for bitnami image
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
     depends_on:
       - zookeeper

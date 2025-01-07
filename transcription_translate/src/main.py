@@ -7,7 +7,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from src.utils.producer import init_kafka_producer, shutdown_kafka_producer
 
-from .routers import task, transcription, upload
+from .routers import auth, task, transcription, upload
 
 app = FastAPI()
 
@@ -48,9 +48,12 @@ async def startup_event():
 
 
 # Include routes
+app.include_router(auth.router, prefix="/api")
 app.include_router(transcription.router, prefix="/api")
-app.include_router(upload.router, prefix="/api")
 app.include_router(task.router, prefix="/api")
+app.include_router(upload.router, prefix="/api")
+
+
 if __name__ == "__main__":
     import uvicorn
 

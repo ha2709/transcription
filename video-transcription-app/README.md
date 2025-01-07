@@ -35,3 +35,12 @@ https://www.youtube.com/watch?v=9bZkp7q19f0
 https://github.com/openai/whisper
 https://github.com/x404xx/Fb-Down
 pip install -r requirements.txt
+
+
+`{
+  "email": "user@example.com",
+  "username": "string",
+  "first_name": "string",
+  "last_name": "string",
+  "password": "string"
+}`
