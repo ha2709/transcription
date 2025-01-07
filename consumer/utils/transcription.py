@@ -1,15 +1,88 @@
+import logging
 import os
 import subprocess
 
-from translate import Translator
+# from translate import Translator
 from whisper import load_model
 
 from .decorators import log
 from .srt_validation import write_srt
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # Load the Whisper model
 model = load_model("small", device="cpu")
 from transformers import MarianMTModel, MarianTokenizer
+
+download_dir = os.path.join("download")
+output_dir = "output"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+
+@log
+def transcribe_and_translate_srt(input_file, language):
+    if input_file.endswith((".mp4", ".avi", ".mov", ".mkv")):
+        audio_file = video_to_audio(input_file)
+    else:
+        audio_file = input_file
+
+    options = dict(beam_size=5, best_of=5)
+    translate_options = dict(task="translate", **options)
+    try:
+        result = model.transcribe(audio_file, **translate_options)
+    except Exception as e:
+        logger.error(f"Failed to transcribe audio file {audio_file}: {e}")
+        return None, None
+    print(25, language, result)
+
+    audio_path = os.path.splitext(os.path.basename(audio_file))[0]
+    # detect_lanaguage = result["language"]
+    detect_lanaguage = "en"
+    print(24, detect_lanaguage)
+    # Save original transcription SRT in 'output' folder
+    original_srt_path = os.path.join(output_dir, f"{audio_path}_{detect_lanaguage}.srt")
+    try:
+        with open(original_srt_path, "w", encoding="utf-8") as srt_file:
+            write_srt(result["segments"], srt_file)
+        logger.info(f"Original SRT file saved to: {original_srt_path}")
+    except Exception as e:
+        logger.error(f"Failed to save original SRT file {original_srt_path}: {e}")
+        return None, None
+
+    # Skip translation if the detected language matches the target language
+    if detect_lanaguage == language:
+        logger.info(
+            f"Detected language matches the target language ({language}). Skipping translation."
+        )
+        return original_srt_path, original_srt_path
+
+    # Define the translation model name based on detected and target languages
+    model_name = f"Helsinki-NLP/opus-mt-{detect_lanaguage}-{language}"
+
+    # Load the MarianMT model and tokenizer
+    model_translate = MarianMTModel.from_pretrained(model_name)
+    tokenizer = MarianTokenizer.from_pretrained(model_name)
+    try:
+        # Translate each segment's text using MarianMT
+        translated_segments = [
+            {
+                "start": seg["start"],
+                "end": seg["end"],
+                "text": translate_text(seg["text"], model_translate, tokenizer),
+            }
+            for seg in result["segments"]
+        ]
+    except Exception as e:
+        # logger.error(f"Failed to translate segments: {e}")
+        return None, None
+    translated_srt_path = os.path.join(output_dir, f"{audio_path}_{language}.srt")
+
+    # translated_srt_path = os.path.join("srt", audio_path + f"_{language}.srt")
+    with open(translated_srt_path, "w", encoding="utf-8") as srt_file:
+        write_srt(translated_segments, srt_file)
+
+    return translated_srt_path, original_srt_path
 
 
 @log

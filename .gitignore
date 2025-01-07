@@ -14,9 +14,15 @@ video-transcription-app/public
 develop-eggs/
 dist/
 downloads/
+**/download/
+**/media/
+**/out/ 
+fastapi-kafka/
+bitnami/
 eggs/
 .eggs/
 lib/
+/alembic/versions/*
 lib64/
 parts/
 sdist/

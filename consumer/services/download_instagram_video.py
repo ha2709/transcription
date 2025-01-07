@@ -2,8 +2,7 @@ import os
 
 import instaloader
 import requests
-
-from ..utils.decorators import cache, log
+from utils.decorators import cache, log
 
 # Directory paths
 DOWNLOAD_DIR = os.path.join(os.getcwd(), "download")

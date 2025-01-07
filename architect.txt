@@ -1,0 +1,32 @@
+@startuml
+actor User
+participant "React Frontend" as Frontend
+participant "FastAPI Backend" as Backend
+participant Kafka
+participant "Consumer\n(Whisper + Translator)\n(Scalable)" as Consumer
+participant "Email Service" as EmailService
+
+User -> Frontend: Upload Audio/Video File
+Frontend -> Backend: HTTP POST /upload with file
+Backend -> Kafka: Produce message (file info)
+Backend --> Frontend: HTTP 202 Accepted (task ID)
+
+Kafka -> Consumer: Consume message (file info)
+Consumer -> Consumer: Transcribe Audio/Video
+Consumer -> Consumer: Translate Transcription
+Consumer -> Backend: HTTP POST /update_result
+     
+Consumer -> EmailService: Send notification email (task_id, user email)
+
+EmailService -> User: Email Notification: Your task is completed.
+
+Frontend -> Backend: HTTP GET /status?task_id=...
+Backend --> Frontend: HTTP 200 with status and results
+Frontend -> User: Display Translated Text
+
+note over Consumer, EmailService
+  Multiple Consumer instances can run in parallel
+  to scale processing as needed
+end note
+
+@enduml

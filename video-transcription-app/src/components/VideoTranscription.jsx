@@ -1,8 +1,9 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 
-import GoogleTranslateLanguageSelector from './GoogleTranslateLanguageSelector'; // Adjust the path if necessary
-import LanguageSelector from './LanguageSelector'; // Adjust the import path as needed
+import GoogleLogin from './GoogleLogin';
+import GoogleTranslateLanguageSelector from './GoogleTranslateLanguageSelector';
+import LanguageSelector from './LanguageSelector';
 
 const VideoTranscription = () => {
     const [videoUrl, setVideoUrl] = useState('');
@@ -10,27 +11,37 @@ const VideoTranscription = () => {
     const [taskId, setTaskId] = useState(null);
     const [transcriptionStatus, setTranscriptionStatus] = useState('');
     const [videoFileUrl, setVideoFileUrl] = useState('');
+    const [transcriptionContent, setTranscriptionContent] = useState('');
     const [file, setFile] = useState(null); // State for file input
     const [translateLanguage, setTranslateLanguage] = useState('en');
+    const [userToken, setUserToken] = useState(null); // Store user token after Google Login
 
     // Set the base URL for axios requests
     const axiosInstance = axios.create({
         baseURL: 'http://localhost:8000/api', // Replace with your Django server's base URL
     });
 
+    // Handle Google Login success
+    const handleGoogleLoginSuccess = (token) => {
+        setUserToken(token); // Save the token after successful login
+        console.log("Google token saved: ", token);
+    };
+
     // Handle form submission
     const handleSubmit = async (event) => {
         event.preventDefault();
+        // if (!userToken) {
+        //     alert("Please sign in with Google before submitting the form.");
+        //     return;
+        // }
         try {
-            // Call different submission logic depending on whether a file is uploaded
             if (file) {
-                await handleSubmitFile(event);
+                await handleSubmitVideoFile(event);
             } else {
-                // Assuming you want to handle URL submission separately
                 const response = await axiosInstance.post('/transcribe', { videoUrl, language, translateLanguage });
+                // setTaskId("4f90a040-e121-47fc-a32c-b0ba271fd726")
                 setTaskId(response.data.task_id);
-                // setTaskId("4f00b060-e2b9-4045-b65f-778a3fe7e96f")
-                setTranscriptionStatus('Processing...');
+                // setTranscsriptionStatus('Processing...');
             }
         } catch (error) {
             console.error('Error starting transcription:', error);
@@ -43,8 +54,8 @@ const VideoTranscription = () => {
         setFile(selectedFile);
     };
 
-    // Function to handle file upload submission
-    const handleSubmitFile = async (e) => {
+    // Function to handle video file upload submission
+    const handleSubmitVideoFile = async (e) => {
         e.preventDefault(); // Prevent the default form submission
         if (file) {
             const formData = new FormData();
@@ -53,22 +64,19 @@ const VideoTranscription = () => {
             formData.append('translate_language', translateLanguage);
 
             try {
-                const response = await fetch('http://localhost:8000/api/upload-video-file/', {  // Corrected the endpoint URL
-                    method: 'POST',
-                    body: formData,
+                const response = await axiosInstance.post('/upload-video-file', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${userToken}` }, // Send token in header
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to upload file');
+                if (response.status !== 202) {
+                    throw new Error('Failed to upload video file');
                 }
 
-                const data = await response.json();
-                setTaskId(data.task_id);
-                // setTaskId("4f00b060-e2b9-4045-b65f-778a3fe7e96f")
+                setTaskId(response.data.task_id);
                 setTranscriptionStatus('File uploaded successfully. Transcription in progress...');
             } catch (error) {
-                console.error('Error uploading file:', error);
-                setTranscriptionStatus('Failed to upload file. Please try again.');
+                console.error('Error uploading video file:', error);
+                setTranscriptionStatus('Failed to upload video file. Please try again.');
             }
         }
     };
@@ -81,7 +89,7 @@ const VideoTranscription = () => {
                     const statusResponse = await axiosInstance.get(`/task-status/${taskId}`);
                     if (statusResponse.data.status === 'completed') {
                         setTranscriptionStatus('Completed');
-                        setVideoFileUrl(`http://localhost:8000/media/out/output-${taskId}.mp4`);
+                        setTranscriptionContent(statusResponse.data.file_content); // Set the transcribed content
                         clearInterval(interval);
                     } else if (statusResponse.data.status === 'failed') {
                         setTranscriptionStatus('Failed');
@@ -100,6 +108,12 @@ const VideoTranscription = () => {
     return (
         <div className="container mt-5">
             <h1 className="text-center">Video Transcription</h1>
+
+            {/* Add Google Login Component */}
+            <div className="mb-3">
+                <GoogleLogin onLoginSuccess={handleGoogleLoginSuccess} />
+            </div>
+
             <form onSubmit={handleSubmit} className="mt-4">
                 <div className="form-group">
                     <label htmlFor="videoUrl">Video URL:</label>
@@ -137,6 +151,14 @@ const VideoTranscription = () => {
             </form>
 
             {taskId && <p className="mt-3">Task ID: {taskId}</p>}
+
+            {/* Display the transcription content if the status is 'completed' */}
+            {transcriptionStatus === 'Completed' && transcriptionContent && (
+                <div className="mt-4">
+                    <h2>Transcription Content</h2>
+                    <pre>{transcriptionContent}</pre> {/* Preformatted text to display the transcription */}
+                </div>
+            )}
             {transcriptionStatus && <p className="mt-3">Status: {transcriptionStatus}</p>}
 
             {videoFileUrl && (
