@@ -3,7 +3,7 @@ npm start
 
 cd transcription_translate/
 source env/bin/activate
-
+uvicorn src.main:app --reload
 pip freeze > requirements.txt
 
 sudo docker compose up -d
@@ -14,6 +14,7 @@ kafka-topics.sh --create --topic file-upload --bootstrap-server localhost:9092 -
 kafka-topics.sh --list --bootstrap-server localhost:9092
 https://www.instagram.com/reel/C7wuY7Xghfc/?igsh=YmQ3dDhjcWdybWlk
 pip3 freeze > requirements.txt 
+
 chmod -R 777 /var/run/docker.sock
 http://localhost:8000/media/download/output-7f11a8d9-0fac-4f0a-b1d2-07f38195d7a1.mp4
 python manage.py makemigrations
