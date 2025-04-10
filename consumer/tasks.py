@@ -1,13 +1,22 @@
 import logging
 import os
-import re
-from email.message import EmailMessage
 
-import aiosmtplib
-import httpx
+from dotenv import load_dotenv
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.settings import Settings
+from llama_index.llms.openai import OpenAI
 
-# from .models import VideoProcess  # Import the VideoProcess model
+load_dotenv()
+# 0. Disable default LLM (to avoid OpenAI dependency)
+# Settings.llm = None
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+# 1. Enable OpenAI as LLM
+llm = OpenAI(model="gpt-3.5-turbo", temperature=0.2)
+Settings.llm = llm
 from services.process_video import process_video_url
+from services.task_service import update_task_status, update_task_url
 from utils.enum_utils import TaskStatus
 from utils.srt_validation import validate_srt_file
 from utils.subtitle import add_subtitle_to_video
@@ -15,118 +24,9 @@ from utils.transcription import (
     clean_srt_file,
     transcribe_and_translate_srt,
     translate_srt_file,
-    video_to_audio,
 )
-from whisper import load_model
 
-# Load the Whisper model
-model = load_model("small", device="cpu")
-
-# Email Configuration from Environment Variables
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-EMAIL_FROM = os.getenv("EMAIL_FROM")
-
-
-async def send_email(to_email: str, subject: str, body: str):
-    """Asynchronously send an email notification."""
-    message = EmailMessage()
-    message["From"] = EMAIL_FROM
-    message["To"] = to_email
-    message["Subject"] = subject
-    message.set_content(body)
-
-    try:
-        await aiosmtplib.send(
-            message,
-            hostname=SMTP_HOST,
-            port=SMTP_PORT,
-            username=SMTP_USER,
-            password=SMTP_PASSWORD,
-            start_tls=True,  # Set to False if using SSL (port 465)
-        )
-        logging.info(f"Email sent to {to_email}")
-    except Exception as e:
-        logging.error(f"Failed to send email to {to_email}: {str(e)}")
-
-
-async def update_task_url(
-    task_id: str, new_status: str, output_file_url: str, user_email: str
-):
-    # First, read the file content from the output_file_url
-    file_content = ""
-    try:
-        with open(output_file_url, "r", encoding="utf-8") as file:
-            lines = file.readlines()
-            # Filter out lines that contain any numbers (e.g., timestamps or line numbers)
-            text_lines = [line.strip() for line in lines if not re.search(r"\d", line)]
-            file_content = "\n".join(text_lines).strip()
-    except FileNotFoundError:
-        logging.error(f"File not found at path: {output_file_url}")
-        return
-    except Exception as e:
-        logging.error(f"Error reading file {output_file_url}: {str(e)}")
-        return
-
-    print(34, file_content)
-    # Construct the full API URL by appending the task_id and 'output-url' endpoint
-    api_url = f"http://localhost:8000/api/tasks/{task_id}/output-url"
-    params = {"translated_text": file_content, "new_status": new_status}
-
-    # Make the HTTP request to update the task's output file URL
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.put(api_url, params=params)
-            if response.status_code == 200:
-                logging.info(
-                    f"Task ID: {task_id} updated with output_file_url: {output_file_url}"
-                )
-                # Send email notification for task completion
-                subject = f"Your Task {task_id} is Completed"
-                body = f"Hello,\n\nYour task with ID {task_id} has been completed successfully.\n\nYou can access the output here: {output_file_url}\n\nBest regards,\nYour Team"
-                await send_email(user_email, subject, body)
-            else:
-                logging.error(
-                    f"Failed to update output_file_url for task ID: {task_id}. Status Code: {response.status_code}"
-                )
-        except httpx.RequestError as exc:
-            logging.error(
-                f"An error occurred while requesting {exc.request.url!r}. Error: {exc}"
-            )
-        except Exception as e:
-            logging.error(f"Unexpected error occurred: {str(e)}")
-
-
-async def update_task_status(task_id: str, new_status: str, user_email: str):
-    """
-    Update the task status by calling the API and send email notification.
-    """
-    api_url = f"http://localhost:8000/api/tasks/{task_id}/status"
-    params = {"new_status": new_status}
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.put(api_url, params=params)
-            if response.status_code != 200:
-                logging.error(f"Failed to update task status for task ID: {task_id}")
-            else:
-                logging.info(f"Task ID: {task_id} updated to status: {new_status}")
-                # Optionally, send an email when status is updated to specific values
-                if new_status == TaskStatus.COMPLETED.value:
-                    subject = f"Your Task {task_id} is Completed"
-                    body = f"Hello,\n\nYour task with ID {task_id} has been completed successfully.\n\nBest regards,\nYour Team"
-                    await send_email(user_email, subject, body)
-                elif new_status == TaskStatus.FAILED.value:
-                    subject = f"Your Task {task_id} has Failed"
-                    body = f"Hello,\n\nYour task with ID {task_id} has failed. Please try again or contact support.\n\nBest regards,\nYour Team"
-                    await send_email(user_email, subject, body)
-        except httpx.RequestError as exc:
-            logging.error(
-                f"An error occurred while requesting {exc.request.url!r}. Error: {exc}"
-            )
-        except Exception as e:
-            logging.error(f"Unexpected error occurred: {str(e)}")
+# from consumer.services.document import process_summary_document
 
 
 async def process_file_upload(message):
@@ -144,7 +44,7 @@ async def process_file_upload(message):
         output_file = os.path.join("media/out", f"output-{task_id}.mp4")
         # Update task status to 'processing'
         await update_task_status(task_id, TaskStatus.PROCESSING.value, user_email)
-
+        print(input_file.lower())
         # Check if the uploaded file is an SRT file
         if input_file.lower().endswith(".srt"):
             # Translate the SRT file to the desired language
@@ -159,7 +59,9 @@ async def process_file_upload(message):
             )
 
             return translated_srt_path
-
+        elif input_file.lower().endswith(".pdf"):
+            logging.warning(f"Processing PDF file upload task ID: {task_id}")
+            await process_summary_document(message)
         else:
             # Process the uploaded video file
             logging.warning(f"Processing video file upload task ID: {task_id}")
@@ -243,3 +145,26 @@ async def process_video_message(message):
     except Exception as e:
         logging.error(f"Failed to process task ID: {task_id}, Error: {str(e)}")
         await update_task_status(task_id, TaskStatus.FAILED.value, user_email)
+
+
+async def process_summary_document(message):
+    print(75, message)
+    documents = SimpleDirectoryReader(input_files=[message["file_path"]]).load_data()
+    # 2. Use local sentence transformer model (via LangChain wrapper)
+    embed_model = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+
+    # 3. Parse documents into smaller chunks
+    parser = SentenceSplitter(chunk_size=512, chunk_overlap=50)
+    nodes = parser.get_nodes_from_documents(documents)
+
+    # 4. Build the index with local embeddings
+    index = VectorStoreIndex(nodes, embed_model=embed_model)
+
+    # 5. Query the index (LLM disabled, fallback to keyword/embedding retrieval)
+    query_engine = index.as_query_engine()
+    response = query_engine.query(
+        "Give me summary of the document ignore the disclaimer"
+    )
+    print(response)

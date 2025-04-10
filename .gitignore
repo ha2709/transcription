@@ -10,6 +10,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+transcription_translate/download_files/
 video-transcription-app/public
 develop-eggs/
 dist/

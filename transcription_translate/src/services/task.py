@@ -13,7 +13,6 @@ from src.repositories.task_repository import get_task_by_id, update_task_output
 from src.repositories.task_repository import (
     update_task_status as repo_update_task_status,
 )
-from src.services.upload_service import save_file_to_disk
 from src.utils.enum_utils import TaskStatus
 from src.utils.producer import init_kafka_producer
 
@@ -23,14 +22,14 @@ async def handle_task_creation(
     language: str,
     translate_language: str,
     user_ip: str,
+    file_path: str,
     db: AsyncSession,
 ) -> str:
     task_id = str(uuid.uuid4())
-    file_path = save_file_to_disk(file)
 
     task = Task(task_id=task_id, status="pending", user_ip=user_ip)
     await create_task(db, task)
-
+    print(33, file_path)
     message = {
         "file_path": file_path,
         "to_language": translate_language,
@@ -47,7 +46,7 @@ async def handle_task_creation(
     finally:
         await kafka_producer.stop()
 
-    return task_id
+    # return task_id
 
 
 async def get_task(task_id: str, db: AsyncSession) -> Task:

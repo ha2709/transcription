@@ -4,9 +4,8 @@ import re
 
 import httpx
 from dotenv import load_dotenv
-
-from consumer.services.email import send_email
-from consumer.utils.enum_utils import TaskStatus
+from services.email import send_email
+from utils.enum_utils import TaskStatus
 
 load_dotenv()
 api_base_url = os.getenv("API_BASE_URL")

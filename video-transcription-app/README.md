@@ -4,6 +4,8 @@ npm start
 cd transcription_translate/
 source env/bin/activate
 uvicorn src.main:app --reload
+
+
 pip freeze > requirements.txt
 
 sudo docker compose up -d

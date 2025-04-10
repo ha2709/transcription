@@ -1,13 +1,14 @@
 import asyncio
 import json
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from aiokafka import AIOKafkaConsumer
-from tasks import (
-    process_file_upload,
-    process_remove_disclosure,
-    process_summary_document,
-    process_video_message,
-)
+
+# from services.document import process_remove_disclosure
+from tasks import process_file_upload, process_video_message
 
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"  # Replace with your Kafka server
 KAFKA_TOPICS = ["video-transcription", "file-upload"]  # List of topics to subscribe to
@@ -35,10 +36,7 @@ async def consume_messages():
                 await process_video_message(task_data)
             elif topic == "file-upload":
                 await process_file_upload(task_data)
-            elif topic == "remove-disclosure":
-                await process_remove_disclosure(task_data)
-            elif topic == "summary-document":
-                await process_summary_document(task_data)
+
     finally:
         await consumer.stop()
 

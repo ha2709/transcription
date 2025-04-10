@@ -15,7 +15,7 @@ load_dotenv()
 DATABASE_URL = os.environ.get("DATABASE_URL")
 print(12, DATABASE_URL)
 
-engine = create_async_engine(DATABASE_URL, echo=True, poolclass=NullPool)
+engine = create_async_engine(DATABASE_URL, echo=False, poolclass=NullPool)
 
 AsyncSessionLocal = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False

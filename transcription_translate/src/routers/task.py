@@ -120,5 +120,5 @@ async def get_task_status(
     task_id: str,
     db: AsyncSession = Depends(get_async_db),
 ):
-    print(89, task_id)
+    # print(89, task_id)
     return await get_task_status_service(task_id, db)
