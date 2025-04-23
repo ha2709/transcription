@@ -162,7 +162,7 @@ async def process_summary_document(message):
     # 4. Build the index with local embeddings
     index = VectorStoreIndex(nodes, embed_model=embed_model)
 
-    # 5. Query the index (LLM disabled, fallback to keyword/embedding retrieval)
+    # 5. Query the index (fallback to keyword/embedding retrieval)
     query_engine = index.as_query_engine()
     response = query_engine.query(
         "Give me summary of the document ignore the disclaimer"
